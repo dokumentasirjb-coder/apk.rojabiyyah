@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 345 100% 25%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 345 100% 25%;
+  }
+
+  /* Standar UI Profesional: Bersih, Rapi, Kontras Tinggi, Nyaman di Mata */
+  html, body, #root {
+    background-color: #0b0f19;
+    color: #f8fafc;
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  /* Standar Glass Card: Bersih, Modern, Minimalis Elegan */
+  .glass-card {
+    @apply bg-slate-900/70 backdrop-blur-xl border border-white/10 shadow-glass rounded-2xl;
+  }
+
+  .glass-card-hover {
+    @apply transition-all duration-200 hover:border-[#800020]/50 hover:shadow-glow hover:-translate-y-0.5;
+  }
+
+  /* Standar Input Form & Select: Rapi, Tajam, Berkelas, Fokus Halus Burgundy */
+  .glass-input {
+    @apply bg-slate-900/80 border border-white/15 focus:border-[#800020] focus:ring-2 focus:ring-[#800020]/25 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-slate-400 outline-none transition-all;
+  }
+
+  .glass-panel {
+    @apply bg-slate-900/85 backdrop-blur-2xl border-b border-white/10;
+  }
+
+  /* Gradasi Teks Elegan: Rose Gold Halus */
+  .gradient-ai-text {
+    @apply bg-gradient-to-r from-rose-200 via-amber-200 to-rose-300 bg-clip-text text-transparent font-extrabold;
+  }
+
+  /* Tombol Utama Burgundy #800020 Premium */
+  .gradient-btn {
+    @apply bg-gradient-to-r from-[#800020] via-[#94112e] to-[#ab1737] hover:from-[#94112e] hover:to-[#be1b3f] text-white font-medium shadow-glow transition-all duration-200 active:scale-[0.98] border border-rose-400/20;
+  }
+
+  .gradient-gold-btn {
+    @apply bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-md transition-all duration-200 active:scale-[0.98];
+  }
+}
+
+/* Custom Scrollbar Standar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 0, 32, 0.6);
+}
+
+/* ========================================================================= */
+/* PRINT MEDIA RULES (Pembersihan Tampilan Saat Cetak / Save PDF)            */
+/* ========================================================================= */
+@media print {
+  nav,
+  header,
+  aside,
+  .print\:hidden,
+  [role="navigation"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html, body, #root {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  * {
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

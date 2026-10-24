@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ANGGOTA
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CategoryType {
+  INVENTORY
+  TRANSACTION_INCOME
+  TRANSACTION_EXPENSE
+  TASK_POINT
+}
+
+enum ItemCondition {
+  GOOD
+  SLIGHTLY_DAMAGED
+  DAMAGED
+}
+
+enum ItemSource {
+  INTERNAL
+  LOAN_FROM_INSTITUTION
+}
+
+enum BorrowerType {
+  MEMBER
+  OUTSIDE
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BORROWED
+  RETURNED
+  OVERDUE
+}
+
+enum ReportStatus {
+  GOOD
+  ATTENTION_NEEDED
+  DAMAGED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  URGENT
+}
+
+enum CustomFieldModule {
+  INVENTORY
+  MEMBER
+  TASK_POINT
+  LOAN
+  TRANSACTION
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  SELECT
+  DATE
+  TEXTAREA
+}
+
+model User {
+  id              Int            @id @default(autoincrement())
+  username        String         @unique
+  email           String         @unique
+  password        String
+  role            Role           @default(ANGGOTA)
+  refreshToken    String?        @db.Text
+  loginAttempts   Int            @default(0)
+  lockedUntil     DateTime?
+  member          Member?
+  activityLogs    ActivityLog[]
+  notifications   Notification[]
+  approvedLoans   Loan[]         @relation("ApprovedBy")
+  resolvedReports FieldReport[]  @relation("ResolvedBy")
+  transactions    Transaction[]  @relation("CreatedBy")
+  loanStatusLogs  LoanStatusLog[] @relation("ChangedBy")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("users")
+}
+
+model Member {
+  id          Int          @id @default(autoincrement())
+  userId      Int?         @unique
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  memberId    String       @unique
+  fullName    String
+  division    String?      // DEV (Koordinator, Fotografer, Videografer, Perkabelan, Proyektor, dll.)
+  education   String?      // PENDIDIKAN (Abiturent, UNWAHA, IAIBAFA, MAN 3, dll.)
+  grade       String?      // KELAS (Kelas / Tingkat / Angkatan)
+  domicile    String?      // DOMISILI (Al-Muhibbin, Al-Ikhlas, Al-Amanah, Gresik, dll.)
+  shirtSize   String?      // SERAGAM (S, M, L, XL, XXL, XXXL)
+  phone       String?      // NO WA
+  address     String?      @db.Text
+  regionId    Int?
+  region      Region?      @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  status      MemberStatus @default(ACTIVE)
+  avatar      String?
+  notes       String?      @db.Text
+  taskPoints  TaskPoint[]  @relation("PicMember")
+  fieldReports FieldReport[]
+  loans       Loan[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("members")
+}
+
+model Category {
+  id             Int             @id @default(autoincrement())
+  name           String
+  type           CategoryType
+  description    String?         @db.Text
+  inventoryItems InventoryItem[]
+  transactions   Transaction[]
+  taskPoints     TaskPoint[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("categories")
+}
+
+model Institution {
+  id             Int             @id @default(autoincrement())
+  name           String
+  contactPerson  String?
+  phone          String?
+  address        String?         @db.Text
+  notes          String?         @db.Text
+  inventoryItems InventoryItem[]
+  loans          Loan[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("institutions")
+}
+
+model InventoryItem {
+  id                Int           @id @default(autoincrement())
+  code              String        @unique
+  name              String
+  categoryId        Int
+  category          Category      @relation(fields: [categoryId], references: [id])
+  quantity          Int           @default(1)
+  availableQuantity Int           @default(1)
+  condition         ItemCondition @default(GOOD)
+  location          String
+  source            ItemSource    @default(INTERNAL)
+  institutionId     Int?
+  institution       Institution?  @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  photo             String?
+  notes             String?       @db.Text
+  loanItems         LoanItem[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("inventory_items")
+}
+
+model Loan {
+  id           Int             @id @default(autoincrement())
+  loanCode     String          @unique
+  borrowerType BorrowerType    @default(MEMBER)
+  memberId     Int?
+  member       Member?         @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  borrowerName String
+  institutionId Int?
+  institution  Institution?    @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  startDate    DateTime
+  endDate      DateTime
+  returnDate   DateTime?
+  purpose      String          @db.Text
+  status       LoanStatus      @default(PENDING)
+  adminNotes   String?         @db.Text
+  borrowProof  String?         // Foto bukti penyerahan/peminjaman barang
+  returnProof  String?         // Foto bukti pengembalian barang
+  approvedById Int?
+  approvedBy   User?           @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  loanItems    LoanItem[]
+  statusLogs   LoanStatusLog[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("loans")
+}
+
+model LoanItem {
+  id              Int           @id @default(autoincrement())
+  loanId          Int
+  loan            Loan          @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  inventoryItemId Int
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  quantity        Int           @default(1)
+  conditionBefore ItemCondition @default(GOOD)
+  conditionAfter  ItemCondition?
+  notes           String?       @db.Text
+
+  @@map("loan_items")
+}
+
+model LoanStatusLog {
+  id          Int        @id @default(autoincrement())
+  loanId      Int
+  loan        Loan       @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  status      LoanStatus
+  changedById Int?
+  changedBy   User?      @relation("ChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  notes       String?    @db.Text
+  createdAt   DateTime   @default(now())
+
+  @@map("loan_status_logs")
+}
+
+model Region {
+  id          Int         @id @default(autoincrement())
+  name        String
+  code        String      @unique
+  description String?     @db.Text
+  members     Member[]
+  taskPoints  TaskPoint[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("regions")
+}
+
+model TaskPoint {
+  id           Int           @id @default(autoincrement())
+  name         String
+  regionId     Int
+  region       Region        @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  categoryId   Int?
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryName String?
+  address      String?       @db.Text
+  picMemberId  Int?
+  picMember    Member?       @relation("PicMember", fields: [picMemberId], references: [id], onDelete: SetNull)
+  schedule     String?
+  notes        String?       @db.Text
+  fieldReports FieldReport[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("task_points")
+}
+
+model FieldReport {
+  id            Int          @id @default(autoincrement())
+  taskPointId   Int
+  taskPoint     TaskPoint    @relation(fields: [taskPointId], references: [id], onDelete: Cascade)
+  memberId      Int
+  member        Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  status        ReportStatus @default(GOOD)
+  description   String       @db.Text
+  adminResponse String?      @db.Text
+  isResolved    Boolean      @default(false)
+  resolvedAt    DateTime?
+  resolvedById  Int?
+  resolvedBy    User?        @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  media         ReportMedia[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("field_reports")
+}
+
+model ReportMedia {
+  id            Int         @id @default(autoincrement())
+  fieldReportId Int
+  fieldReport   FieldReport @relation(fields: [fieldReportId], references: [id], onDelete: Cascade)
+  fileUrl       String
+  fileType      String
+  originalName  String?
+  fileSize      Int?
+  createdAt     DateTime    @default(now())
+
+  @@map("report_media")
+}
+
+model Transaction {
+  id          Int             @id @default(autoincrement())
+  code        String          @unique
+  type        TransactionType
+  categoryId  Int
+  category    Category        @relation(fields: [categoryId], references: [id])
+  amount      Decimal         @db.Decimal(15, 2)
+  date        DateTime
+  description String          @db.Text
+  proofFile   String?
+  createdById Int?
+  createdBy   User?           @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("transactions")
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  module    String
+  details   String?  @db.Text
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String           @db.Text
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  @@map("notifications")
+}
+
+model CustomField {
+  id          Int               @id @default(autoincrement())
+  module      CustomFieldModule
+  fieldName   String
+  fieldLabel  String
+  fieldType   CustomFieldType   @default(TEXT)
+  options     Json?
+  isRequired  Boolean           @default(false)
+  values      CustomFieldValue[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  id            Int         @id @default(autoincrement())
+  customFieldId Int
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  recordId      Int
+  value         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("custom_field_values")
+}
+
+model OrganizationSetting {
+  id           Int      @id @default(autoincrement())
+  orgName      String   @default("Administrasi Rojabiyyaah")
+  orgTagline   String?  @default("Sistem Informasi Manajemen Terpadu")
+  logoUrl      String?
+  address      String?  @db.Text
+  contactPhone String?
+  contactEmail String?
+  themeConfig  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("organization_settings")
+}
+
+
